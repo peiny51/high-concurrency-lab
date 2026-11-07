@@ -128,6 +128,26 @@ settings. Local connection details stay outside version control and application
 JARs. Scenario-sized concurrency runs demonstrate behavior; they are not
 throughput benchmarks or a substitute for capacity testing.
 
+## Continuous Integration
+
+The GitHub Actions workflow in `.github/workflows/ci.yml` runs on pushes, pull
+requests, and manual dispatch. Two independent jobs validate the backend and
+frontend:
+
+- **Backend:** Java 21, disposable MySQL/Redis/Kafka services, Maven tests, and
+  executable JAR packaging.
+- **Frontend:** Node.js 24.12.0, `npm ci`, and the Vue production build.
+
+The backend job uses `docker-compose.ci.yml` with separate ports (13307, 16379,
+and 19092), temporary data, readiness checks, and explicit CI environment
+variables. It does not use `application-local.properties` or the development
+containers. The `ci-only` database credentials are disposable test values.
+
+Test reports and successful build artifacts are retained for seven days.
+Dependency diagnostics are printed on failure, and CI containers are cleaned up
+after the backend job. Workflow permissions are read-only; official Actions are
+pinned to commit hashes. These jobs validate builds and do not deploy applications.
+
 ## Local configuration
 
 The repository includes shared settings in `src/main/resources/application.properties`.
