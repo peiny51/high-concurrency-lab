@@ -1,0 +1,23 @@
+# Propose dependency updates for review; updates are not merged automatically.
+version: 2
+updates:
+  # Inspect the backend dependencies declared in the root pom.xml.
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+
+  # Inspect frontend dependencies and keep the npm lockfile consistent.
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+
+  # Propose updates to the pinned actions used by GitHub workflows.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3

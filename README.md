@@ -162,6 +162,19 @@ Dependency diagnostics are printed on failure, and CI containers are cleaned up
 after the backend job. Workflow permissions are read-only; official Actions are
 pinned to commit hashes. These jobs validate builds and do not deploy applications.
 
+## Dependency and Secret Protection
+
+`.github/dependabot.yml` checks Maven dependencies, frontend npm dependencies,
+and GitHub Actions weekly. Each ecosystem allows up to three open version-update
+PRs. Updates require review and are not merged automatically; the configuration
+is activated from the repository's default branch.
+
+The GitHub repository has Dependabot vulnerability alerts and security-update
+PRs enabled separately from scheduled version updates. Secret scanning and push
+protection are also enabled for supported credential patterns. These features
+do not guarantee detection of every secret or vulnerability. Keep real local
+credentials in ignored configuration and review dependency changes before merging.
+
 ## Local configuration
 
 The repository includes shared settings in `src/main/resources/application.properties`.
