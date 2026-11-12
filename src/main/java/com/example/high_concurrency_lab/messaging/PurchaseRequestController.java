@@ -14,7 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-/** Exposes submission only; consumer processing and a durable result-query endpoint are not implemented yet. */
+/** Exposes broker-acknowledged submission; purchase completion is asynchronous and is not an HTTP receipt. */
 @RestController
 @RequiredArgsConstructor
 public class PurchaseRequestController {
@@ -26,7 +26,7 @@ public class PurchaseRequestController {
     public ResponseEntity<SubmissionReceipt> submit(@Valid @RequestBody PurchaseRequest request) {
         publisher.publish(request);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(new SubmissionReceipt(
-                request.requestId(), "SUBMITTED", "Kafka acknowledged the request. Purchase processing is not implemented yet."));
+                request.requestId(), "SUBMITTED", "Kafka acknowledged the request. This receipt does not confirm purchase success."));
     }
 
     /** Converts an unconfirmed send into an explicit error without claiming that the intent was rejected. */

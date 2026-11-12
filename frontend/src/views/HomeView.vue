@@ -17,7 +17,11 @@
       <p>Query a product, send concurrent requests, and observe HTTP 429 and window recovery.</p>
       <RouterLink to="/rate-limit">Open Rate Limiting</RouterLink>
     </section>
-    <p>Proactive hot-key refresh and Kafka processing are not implemented yet.</p>
+    <section>
+      <h2>Kafka Stock Deduction</h2>
+      <p>Submit an asynchronous stock deduction request and inspect its processing result. No orders or payments are created.</p>
+      <RouterLink to="/kafka">Open Kafka Stock Deduction</RouterLink>
+    </section>
   </main>
 </template>
 

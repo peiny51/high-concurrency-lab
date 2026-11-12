@@ -7,6 +7,7 @@ import CachePenetrationView from './views/CachePenetrationView.vue'
 import CacheBreakdownView from './views/CacheBreakdownView.vue'
 import CacheAvalancheView from './views/CacheAvalancheView.vue'
 import RateLimitView from './views/RateLimitView.vue'
+import KafkaView from './views/KafkaView.vue'
 
 // Map each business case to its own page using browser-history navigation.
 const router = createRouter({
@@ -15,6 +16,7 @@ const router = createRouter({
     { path: '/', component: HomeView },
     { path: '/inventory', component: InventoryView },
     { path: '/rate-limit', component: RateLimitView },
+    { path: '/kafka', component: KafkaView },
     { path: '/cache', component: CacheView },
     { path: '/cache/aside', component: CacheAsideView },
     { path: '/cache/penetration', component: CachePenetrationView },

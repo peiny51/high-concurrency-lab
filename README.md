@@ -58,11 +58,13 @@ counter update, and initial expiry without interleaving other client commands.
 Rate limits control arrivals over time. Rebuild concurrency limits control the
 number of operations executing together; these are separate protections.
 
-### Asynchronous purchase processing
+### Asynchronous stock deduction
 
 Kafka separates purchase submission from background processing, allowing incoming
 purchase intents to be buffered and processed independently of the HTTP request.
-The workflow distinguishes broker-confirmed submission from a completed purchase.
+The workflow distinguishes broker-confirmed submission from a completed stock
+deduction. The `/kafka` page creates neither orders nor payments; purchase-related
+API and Java names identify the inventory-processing intent.
 
 - A client request ID identifies one purchase intent, alongside product ID and
   quantity.
@@ -71,13 +73,25 @@ The workflow distinguishes broker-confirmed submission from a completed purchase
   processing outcomes.
 - Business-level idempotency to prevent duplicate delivery from causing repeated
   inventory changes.
-- Bounded retry handling and failed-message handling for processing errors.
+- Two additional attempts for retryable processing errors, followed by a
+  broker-confirmed copy to `lab.purchase-requests.v1.DLT` when retries are exhausted.
+- Invalid request content goes directly to the failure topic without retrying.
 - Result lookup so the interface can report the final outcome without requiring
   another purchase submission.
 
 Producer retry deduplication and business idempotency address different problems.
 An unconfirmed send is treated as uncertain delivery, rather than proof that the
 broker rejected the message.
+
+Stock deduction and result insertion share one MySQL transaction. Reusing a
+completed request ID with the same product and quantity returns the saved result;
+conflicting reuse is rejected. A technical failure routed to the DLT does not
+create a completed business result. HTTP 404 from result lookup therefore means
+no completed result is available, rather than proving that a request failed.
+
+Source progress does not advance when failure-topic publishing fails. The retry
+count is not a lifetime limit across restarts or failed recovery. The local setup
+uses one partition and one replica, and does not provide broker high availability.
 
 ## Purchase Workflow
 
@@ -176,6 +190,40 @@ Start the backend with the **Spring** profile `local`:
 ```sh
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
+
+### Enable Kafka stock deduction
+
+The consumer is disabled by default to avoid processing an existing development
+backlog unexpectedly. Before enabling it, review the topic backlog, consumer group
+and committed offsets. On a first run without a committed offset, the default
+`earliest` policy reads retained historical messages. Use a dedicated local group
+and `latest` only when intentionally starting from the current end of the topic:
+
+```sh
+SPRING_KAFKA_LISTENER_AUTO_STARTUP=true \
+SPRING_KAFKA_CONSUMER_GROUP_ID=lab.purchase-processing.local-ui.v1 \
+SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET=latest \
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+Start one backend process; use this command instead of the ordinary startup
+command above. Existing committed offsets take precedence over `latest`.
+Once the backend is running, open `/kafka`, submit one deduction request and use
+**Check Result** with the same request ID. HTTP 202 confirms Kafka acceptance;
+HTTP 200 from the result endpoint reports the completed business outcome.
+
+The browser saves the last attempted request before sending it and never
+automatically resubmits on refresh. An uncertain submission should be followed
+using the same ID. The public endpoints are `POST /api/purchase-requests` and
+`GET /api/purchase-results/{requestId}`.
+
+Kafka logs and KRaft metadata use the mounted `/var/lib/kafka/data` volume.
+Message retention still applies after consumption; a volume is not an indefinite
+archive or backup. For an existing container that wrote outside this mount,
+migrate and verify its data before recreating it. Do not use
+`docker compose down --volumes` when preserving local data.
+
+### Backend tests
 
 Run backend tests using the same local configuration and running dependencies:
 

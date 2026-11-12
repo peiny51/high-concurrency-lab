@@ -6,6 +6,7 @@
       <RouterLink to="/inventory">Inventory</RouterLink>
       <RouterLink to="/cache">Cache Scenarios</RouterLink>
       <RouterLink to="/rate-limit">Rate Limiting</RouterLink>
+      <RouterLink to="/kafka">Kafka Stock Deduction</RouterLink>
     </nav>
   </header>
   <RouterView />
