@@ -1,0 +1,35 @@
+# Run local monitoring independently from the application's dependency services.
+services:
+  prometheus:
+    image: prom/prometheus:v3.13.5
+    ports:
+      - "127.0.0.1:9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+    volumes:
+      # The container reads the checked-in configuration without modifying it.
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      # Keep collected samples when the container is recreated.
+      - prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana:13.3.1
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      # Disposable local lab login, not deployment credentials.
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: local-grafana-only
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/backend-overview.json
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      # Preserve Grafana users and settings across container recreation.
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  prometheus_data:
+  grafana_data:

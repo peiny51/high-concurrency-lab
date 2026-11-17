@@ -1,0 +1,12 @@
+# Alert when the configured backend target cannot be scraped continuously.
+groups:
+  - name: backend-availability
+    rules:
+      - alert: BackendMetricsUnavailable
+        expr: up{job="high-concurrency-lab"} == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backend metrics are unavailable"
+          description: "Prometheus could not scrape {{ $labels.instance }} for at least one minute. Check the target error and backend logs."

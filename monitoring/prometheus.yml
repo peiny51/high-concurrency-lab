@@ -1,0 +1,15 @@
+# Sample the running application every fifteen seconds.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Evaluate the backend availability alert loaded from this mounted file.
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  - job_name: "high-concurrency-lab"
+    metrics_path: "/actuator/prometheus"
+    static_configs:
+      # Docker Desktop resolves this name to the Mac running Spring Boot.
+      - targets: ["host.docker.internal:8080"]

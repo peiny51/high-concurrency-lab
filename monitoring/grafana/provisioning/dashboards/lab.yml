@@ -1,0 +1,7 @@
+# Load checked-in dashboard definitions from the mounted directory.
+apiVersion: 1
+providers:
+  - name: lab-dashboards
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

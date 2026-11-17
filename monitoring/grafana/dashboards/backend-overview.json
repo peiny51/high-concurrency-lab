@@ -1,0 +1,173 @@
+{
+  "uid": "lab-backend-overview",
+  "title": "Backend Monitoring",
+  "description": "API request totals, request rates, average response times, server error rates and the latest Prometheus scrape status for the local backend.",
+  "schemaVersion": 41,
+  "version": 4,
+  "refresh": "15s",
+  "timepicker": { "refresh_intervals": ["5s", "15s", "30s", "1m", "5m"] },
+  "timezone": "browser",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Backend Scrape Status",
+      "description": "UP means the latest Prometheus scrape succeeded. DOWN means it failed.",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "lab-prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=\"high-concurrency-lab\"}",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "No data",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "DOWN", "color": "red" },
+                "1": { "text": "UP", "color": "green" }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"], "values": false }
+      }
+    },
+    {
+      "id": 2,
+      "title": "API Request Count",
+      "description": "Cumulative requests since backend startup, grouped by API path. Updates after the next scrape and dashboard refresh.",
+      "type": "bargauge",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 5 },
+      "datasource": { "type": "prometheus", "uid": "lab-prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (uri) (http_server_requests_seconds_count{job=\"high-concurrency-lab\",uri=~\"/api/.*\"})",
+          "legendFormat": "{{uri}}",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "displayName": "${__field.labels.uri}"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "namePlacement": "left",
+        "sizing": "manual",
+        "minVizHeight": 24,
+        "maxVizHeight": 48,
+        "reduceOptions": { "calcs": ["lastNotNull"], "values": false }
+      }
+    },
+    {
+      "id": 3,
+      "title": "API Requests per Second",
+      "description": "Average requests per second over a rolling one-minute window, grouped by API path. At least two scrape samples are required.",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "lab-prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (uri) (rate(http_server_requests_seconds_count{job=\"high-concurrency-lab\",uri=~\"/api/.*\"}[1m]))",
+          "legendFormat": "{{uri}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "showLegend": true, "placement": "bottom", "displayMode": "list" },
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
+      "id": 4,
+      "title": "API Average Response Time",
+      "description": "Average server-side response time in milliseconds over a rolling one-minute window, weighted by request count. Windows without requests have no valid average.",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 27 },
+      "datasource": { "type": "prometheus", "uid": "lab-prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "1000 * (sum by (uri) (rate(http_server_requests_seconds_sum{job=\"high-concurrency-lab\",uri=~\"/api/.*\"}[1m])) / sum by (uri) (rate(http_server_requests_seconds_count{job=\"high-concurrency-lab\",uri=~\"/api/.*\"}[1m])))",
+          "legendFormat": "{{uri}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 2,
+          "min": 0,
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "showLegend": true, "placement": "bottom", "displayMode": "list" },
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
+      "id": 5,
+      "title": "API Server Error Rate",
+      "description": "HTTP 5xx responses as a percentage of all requests over a rolling one-minute window, grouped by API path. Active paths without a 5xx series show zero; idle windows have no valid percentage.",
+      "type": "timeseries",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 37 },
+      "datasource": { "type": "prometheus", "uid": "lab-prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * ((sum by (uri) (rate(http_server_requests_seconds_count{job=\"high-concurrency-lab\",uri=~\"/api/.*\",status=~\"5..\"}[1m])) or on (uri) (0 * sum by (uri) (rate(http_server_requests_seconds_count{job=\"high-concurrency-lab\",uri=~\"/api/.*\"}[1m])))) / sum by (uri) (rate(http_server_requests_seconds_count{job=\"high-concurrency-lab\",uri=~\"/api/.*\"}[1m])))",
+          "legendFormat": "{{uri}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "min": 0,
+          "max": 100,
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "showLegend": true, "placement": "bottom", "displayMode": "list" },
+        "tooltip": { "mode": "multi" }
+      }
+    }
+  ]
+}
