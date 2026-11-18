@@ -166,6 +166,66 @@ The Vue frontend can use its existing Vite proxy to port 8080. Run the frontend
 using the instructions above. Monitoring services can be started using the
 [monitoring guide](monitoring.md).
 
+### Enable Kafka Consumption in Docker
+
+Use this option instead of the local Maven consumer startup command. First
+review the backlog and committed offsets as described under
+[Enable Kafka stock deduction](#enable-kafka-stock-deduction). Enabling the
+consumer can process pending requests and change inventory.
+
+Create a temporary override file from the repository root:
+
+```sh
+cat > /tmp/high-concurrency-lab.kafka.yml <<'YAML'
+services:
+  backend:
+    environment:
+      SPRING_KAFKA_LISTENER_AUTO_STARTUP: "true"
+      SPRING_KAFKA_CONSUMER_GROUP_ID: lab.purchase-processing.local-ui.v1
+      SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: latest
+YAML
+```
+
+The override enables the listener and selects a dedicated local consumer group.
+`latest` starts at the current topic end only when the group has no valid saved
+offset. It does not skip pending messages for a group with existing offsets.
+Do not change group IDs to recover an uncertain submission; keep its request ID
+and inspect the saved result and processing state first.
+
+Validate the merged configuration, then recreate only the running backend:
+
+```sh
+docker compose --env-file .env.test --profile app \
+  -f docker-compose.yml -f /tmp/high-concurrency-lab.kafka.yml config --quiet
+docker compose --env-file .env.test --profile app \
+  -f docker-compose.yml -f /tmp/high-concurrency-lab.kafka.yml \
+  up -d --no-deps --wait --wait-timeout 180 backend
+docker compose --env-file .env.test --profile app \
+  -f docker-compose.yml -f /tmp/high-concurrency-lab.kafka.yml \
+  logs --tail 100 backend
+```
+
+Start the dependencies with the ordinary Compose startup command first.
+`--no-deps` leaves those running dependency containers unchanged. The second
+`-f` file overrides the backend environment while preserving its other settings.
+Wait for the consumer's partition-assignment log before submitting a new request;
+HTTP health alone does not confirm that Kafka assignment has completed. With
+`latest`, requests submitted before initial assignment may be skipped.
+Then use `/kafka` to submit a request and query its result with the same request ID.
+HTTP 202 alone confirms submission, not a completed deduction.
+
+To disable consumption again, recreate the backend using only the base file:
+
+```sh
+docker compose --env-file .env.test --profile app -f docker-compose.yml \
+  up -d --no-deps --force-recreate --wait --wait-timeout 180 backend
+rm /tmp/high-concurrency-lab.kafka.yml
+```
+
+Recreating the backend briefly interrupts its HTTP service. These commands retain
+the MySQL and Kafka volumes and do not delete saved results or consumer offsets.
+The temporary file is outside the repository and can be removed after use.
+
 ## Continuous Integration
 
 The GitHub Actions workflow in `.github/workflows/ci.yml` runs on pushes, pull
