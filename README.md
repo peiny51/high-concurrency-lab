@@ -36,13 +36,14 @@ GitHub Actions, Prometheus, Grafana.
 
 Requires Java 21, Node.js 24.12+ and Docker Desktop.
 
-Copy the local configuration template once, then set its database username and
-password. The local Compose database uses the demo values `lab` / `lab123`.
+Create `.env.test` from the template and fill its credentials. Set matching
+database credentials in `application-local.properties` for local Java startup.
 
 ```sh
-cp src/main/resources/application-local.properties.example \
+cp -n .env.example .env.test
+cp -n src/main/resources/application-local.properties.example \
   src/main/resources/application-local.properties
-docker compose up -d
+docker compose --env-file .env.test up -d
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
@@ -59,16 +60,18 @@ Kafka consumption is disabled by default; follow the
 [Kafka startup instructions](docs/running.md#enable-kafka-stock-deduction)
 to enable asynchronous processing after reviewing local backlog and offsets.
 
+For a Docker-based backend, follow the [Compose startup guide](docs/running.md#run-the-backend-with-compose).
+
 ## Monitoring
 
-With the backend running under the `local` profile:
+With the backend running and its Prometheus endpoint exposed:
 
 ```sh
-docker compose -f docker-compose.monitoring.yml up -d
+docker compose --env-file .env.test -f docker-compose.monitoring.yml up -d
 ```
 
 - [Grafana dashboard](http://localhost:3000/d/lab-backend-overview/backend-monitoring)
-  — local demo login `admin` / `local-grafana-only`.
+  — use `GRAFANA_ADMIN_USER` and `GRAFANA_ADMIN_PASSWORD` from `.env.test`.
 - [Prometheus targets](http://localhost:9090/targets) and
   [availability alerts](http://localhost:9090/alerts).
 

@@ -1,7 +1,7 @@
 # Local Monitoring
 
 Run commands from the repository root with Docker Desktop and the backend running.
-See [the running guide](running.md) for application setup.
+See [the running guide](running.md) to create and fill `.env.test` and set up the application.
 
 ## Local Prometheus Monitoring
 
@@ -10,10 +10,10 @@ Run the backend with the `local` Spring profile to expose
 the monitoring configuration and start Prometheus:
 
 ```sh
-docker compose -f docker-compose.monitoring.yml config --quiet
-docker compose -f docker-compose.monitoring.yml run --rm --no-deps \
+docker compose --env-file .env.test -f docker-compose.monitoring.yml config --quiet
+docker compose --env-file .env.test -f docker-compose.monitoring.yml run --rm --no-deps \
   --entrypoint /bin/promtool prometheus check config /etc/prometheus/prometheus.yml
-docker compose -f docker-compose.monitoring.yml up -d
+docker compose --env-file .env.test -f docker-compose.monitoring.yml up -d
 ```
 
 Open `http://localhost:9090/targets` and confirm that `high-concurrency-lab` is
@@ -39,14 +39,14 @@ Mac's loopback interface. The container uses Docker Desktop's
 Stop the monitoring service while retaining its collected data:
 
 ```sh
-docker compose -f docker-compose.monitoring.yml stop prometheus
+docker compose --env-file .env.test -f docker-compose.monitoring.yml stop prometheus
 ```
 
 ## Local Grafana Dashboard
 
 The monitoring Compose file also starts Grafana OSS v13.3.1. Open
 `http://localhost:3000/d/lab-backend-overview/backend-monitoring` and sign in with
-the disposable local account `admin` / `local-grafana-only`.
+`GRAFANA_ADMIN_USER` and `GRAFANA_ADMIN_PASSWORD` from your local `.env.test`.
 
 Grafana automatically loads its Prometheus data source and the **Backend
 Monitoring** dashboard from `monitoring/grafana/`. The five panels show the latest
@@ -72,12 +72,13 @@ gaps. HTTP 400 and 429 responses are included in total requests but not in 5xx e
 Start or stop both monitoring services:
 
 ```sh
-docker compose -f docker-compose.monitoring.yml up -d
-docker compose -f docker-compose.monitoring.yml stop prometheus grafana
+docker compose --env-file .env.test -f docker-compose.monitoring.yml up -d
+docker compose --env-file .env.test -f docker-compose.monitoring.yml stop prometheus grafana
 ```
 
-The Grafana port is bound to `127.0.0.1`. The checked-in login is for local lab
-use only; supply deployment credentials separately for another environment.
+The Grafana port is bound to `127.0.0.1`. Login credentials come from the ignored
+local `.env.test` file. Existing Grafana accounts retain their stored passwords;
+changing the initialization variables does not change those accounts.
 
 ## Backend Availability Alert
 
@@ -96,16 +97,16 @@ evaluation, so it is not an exact one-minute timer from process shutdown.
 Validate and apply the configuration:
 
 ```sh
-docker compose -f docker-compose.monitoring.yml run --rm --no-deps \
+docker compose --env-file .env.test -f docker-compose.monitoring.yml run --rm --no-deps \
   --entrypoint /bin/promtool prometheus check config /etc/prometheus/prometheus.yml
-docker compose -f docker-compose.monitoring.yml up -d prometheus
+docker compose --env-file .env.test -f docker-compose.monitoring.yml up -d prometheus
 ```
 
 After editing rule contents without changing mounts, restart Prometheus to load
 the updated files:
 
 ```sh
-docker compose -f docker-compose.monitoring.yml restart prometheus
+docker compose --env-file .env.test -f docker-compose.monitoring.yml restart prometheus
 ```
 
 This local setup shows alert states in Prometheus. Email and other notification

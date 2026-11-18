@@ -8,21 +8,25 @@ The repository includes shared settings in `src/main/resources/application.prope
 Machine-specific connections belong in `application-local.properties`, which Git
 ignores and Maven excludes from application JARs.
 
-For a fresh checkout, copy the template once:
+For a fresh checkout, copy the templates, then fill every value in `.env.test`:
 
 ```sh
-cp src/main/resources/application-local.properties.example src/main/resources/application-local.properties
+cp -n .env.example .env.test
+cp -n src/main/resources/application-local.properties.example src/main/resources/application-local.properties
 ```
 
-Edit the copy and replace `YOUR_LOCAL_DB_USERNAME` and `YOUR_LOCAL_DB_PASSWORD`
-with credentials for your local database. The checked-in Docker Compose file
-currently creates a disposable local database with username `lab` and password
-`lab123`; these are demo values, not deployment credentials.
+Set `YOUR_LOCAL_DB_USERNAME` and `YOUR_LOCAL_DB_PASSWORD` in the local Spring
+configuration to match `DB_USERNAME` and `DB_PASSWORD` in `.env.test`. Compose
+reads credentials from that file. `.env.test` is ignored by Git; `.env.example`
+contains empty placeholders. `cp -n` preserves an existing local file.
+
+For existing MySQL and Grafana volumes, use the accounts already stored there.
+Changing an environment-file value does not rotate an existing account password.
 
 Start the local dependencies:
 
 ```sh
-docker compose up -d
+docker compose --env-file .env.test up -d
 ```
 
 Start the backend with the **Spring** profile `local`:
@@ -61,7 +65,7 @@ Kafka logs and KRaft metadata use the mounted `/var/lib/kafka/data` volume.
 Message retention still applies after consumption; a volume is not an indefinite
 archive or backup. For an existing container that wrote outside this mount,
 migrate and verify its data before recreating it. Do not use
-`docker compose down --volumes` when preserving local data.
+`docker compose --env-file .env.test down --volumes` when preserving local data.
 
 ### Backend tests
 
@@ -99,6 +103,68 @@ The packaged application requires environment-specific configuration at runtime,
 such as datasource, Redis, and Kafka settings supplied through environment variables
 or an external Spring configuration file. Git ignore rules alone do not prevent
 files from being included in build artifacts.
+
+## Backend Docker Image
+
+Build the backend from source using the project's Maven Wrapper:
+
+```sh
+docker build --progress=plain -t high-concurrency-lab:local .
+```
+
+The build stage uses a Java 21 JDK. The final stage contains a Java 21 JRE and
+`/app/app.jar`, and runs as user/group `10001:10001`. Its default entrypoint is
+`java -jar /app/app.jar`; application connection settings are supplied at runtime.
+The Docker build skips test execution; the CI workflow runs the integration tests
+with its disposable services.
+
+Check the image's Java runtime without starting the application:
+
+```sh
+docker run --rm --entrypoint java high-concurrency-lab:local -version
+```
+
+The build context includes the Maven Wrapper, `pom.xml` and backend sources.
+Local connection settings and their template are excluded by `.dockerignore` and
+the Maven JAR configuration. Use container-appropriate MySQL, Redis and Kafka
+addresses when starting this image with its dependencies.
+
+## Run the Backend with Compose
+
+With Docker Desktop running, start the backend and its dependencies:
+
+```sh
+docker compose --env-file .env.test --profile app up -d --build --wait --wait-timeout 180
+```
+
+The `app` profile enables the backend service. Compose builds its image and waits
+for MySQL, Redis and Kafka health checks before starting it. The backend is
+available at `http://localhost:8080`, with health at `/actuator/health` and metrics
+at `/actuator/prometheus`. Java and Maven are supplied by the image build stages;
+Compose reads `.env.test` and supplies connection settings through environment
+variables. Its username and password values are required; missing or empty values
+stop configuration loading with a named error.
+
+Use one backend startup method at a time to avoid a port 8080 conflict. Stop a
+manually started backend before using the command above. To switch back to the
+local Maven startup command, stop the backend container first:
+
+```sh
+docker compose --env-file .env.test --profile app stop backend
+```
+
+Container connections use `mysql:3306`, `redis:6379` and `kafka:29092`. Mac clients
+continue to use `localhost:3307`, `localhost:6379` and `localhost:9092`. Kafka
+advertises its internal and external addresses on separate listeners.
+
+The named MySQL and Kafka data volumes retain existing data. A fresh database
+starts without demo products; use the Inventory page's stock setup before
+querying or purchasing a product. Kafka consumption retains the shared default
+of disabled until the backlog and consumer offsets have been reviewed.
+
+The Vue frontend can use its existing Vite proxy to port 8080. Run the frontend
+using the instructions above. Monitoring services can be started using the
+[monitoring guide](monitoring.md).
 
 ## Continuous Integration
 
