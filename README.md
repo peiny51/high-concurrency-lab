@@ -78,7 +78,8 @@ docker compose --env-file .env.test -f docker-compose.monitoring.yml up -d
 ## CI and Security
 
 [GitHub Actions](.github/workflows/ci.yml) runs backend tests with disposable
-MySQL/Redis/Kafka services, packages the JAR, and builds the frontend.
+MySQL/Redis/Kafka services, packages the JAR, builds the backend Docker image,
+and builds the frontend.
 Dependabot checks Maven, npm, and Actions dependencies. Repository secret scanning
 and push protection are enabled.
 

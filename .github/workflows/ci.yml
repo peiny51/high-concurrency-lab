@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   backend:
-    name: Backend tests and JAR
+    name: Backend tests, JAR and Docker image
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -62,6 +62,10 @@ jobs:
           path: target/*.jar
           if-no-files-found: error
           retention-days: 7
+
+      - name: Build backend Docker image
+        # Validate source-to-image packaging without publishing or deploying it.
+        run: docker build --tag high-concurrency-lab:ci .
 
       - name: Show dependency diagnostics on failure
         if: failure()

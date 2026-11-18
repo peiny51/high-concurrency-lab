@@ -173,7 +173,7 @@ requests, and manual dispatch. Two independent jobs validate the backend and
 frontend:
 
 - **Backend:** Java 21, disposable MySQL/Redis/Kafka services, Maven tests, and
-  executable JAR packaging.
+  executable JAR packaging, and backend Docker image construction.
 - **Frontend:** Node.js 24.12.0, `npm ci`, and the Vue production build.
 
 The backend job uses `docker-compose.ci.yml` with separate ports (13307, 16379,
@@ -185,6 +185,10 @@ Test reports and successful build artifacts are retained for seven days.
 Dependency diagnostics are printed on failure, and CI containers are cleaned up
 after the backend job. Workflow permissions are read-only; official Actions are
 pinned to commit hashes. These jobs validate builds and do not deploy applications.
+After backend tests and packaging pass, CI builds `high-concurrency-lab:ci` from
+the Dockerfile. The image remains on the temporary runner; it is not pushed to
+a registry. The Docker build packages the source again with tests skipped,
+since the preceding Maven step has already run them.
 
 ## Dependency and Secret Protection
 
